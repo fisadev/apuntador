@@ -6,15 +6,18 @@ import ephem
 import requests
 
 
-def iterate_pointing_params(latitude, longitude, altitude):
+API_URL = "https://api.wheretheiss.at/v1/satellites/{norad_id}/tles?format=json"
+
+
+def iterate_pointing_params(sate_name, norad_id, latitude, longitude, altitude):
     """
-    Iterate over azimuth and elevation tuples pointing towards the ISS in real time, forever.
+    Iterate over azimuth and elevation tuples pointing towards a satellite in real time, forever.
     """
-    response = requests.get("https://api.wheretheiss.at/v1/satellites/25544/tles?format=json")
+    response = requests.get(API_URL.format(norad_id=norad_id))
     iss_data = response.json()
 
-    iss = ephem.readtle(
-        'ISS',
+    satellite = ephem.readtle(
+        sate_name,
         iss_data['line1'],
         iss_data['line2'],
     )
@@ -27,12 +30,20 @@ def iterate_pointing_params(latitude, longitude, altitude):
 
     while True:
         observer.date = datetime.utcnow()
-        iss.compute(observer)
-        yield math.degrees(iss.az), math.degrees(iss.alt),
+        satellite.compute(observer)
+        yield math.degrees(satellite.az), math.degrees(satellite.alt),
 
 
 if __name__ == '__main__':
     # pycamp_mendoza lat, lon, alt: -34, -68, 1075
-    for azimuth, elevation in iterate_pointing_params(-34, -68, 1075):
-        print('ISS: azimuth {}, elevation {}'.format(azimuth, elevation))
+    # iss norad id: 25544
+
+    sate_name = 'ISS'
+    real_time_pointer = iterate_pointing_params(
+        sate_name=sate_name, norad_id=25544,  # satellite
+        latitude=-34, longitude=-68, altitude=1075,  # observer
+    )
+
+    for azimuth, elevation in real_time_pointer:
+        print('{}: azimuth {}, elevation {}'.format(sate_name, azimuth, elevation))
         time.sleep(1.0)
